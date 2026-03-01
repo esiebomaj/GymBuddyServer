@@ -1,4 +1,3 @@
-import httpx
 import jwt
 from jwt import PyJWKClient
 from fastapi import HTTPException, status
@@ -23,7 +22,7 @@ def verify_token(token: str) -> dict:
         payload = jwt.decode(
             token,
             signing_key.key,
-            algorithms=["RS256"],
+            algorithms=["ES256"],
             audience="authenticated",
             issuer=f"{settings.supabase_url}/auth/v1",
         )

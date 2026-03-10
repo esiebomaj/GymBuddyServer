@@ -28,8 +28,8 @@ async def get_settings(user: CurrentUserDep, db: SupabaseDep):
     return SettingsResponse(
         weekly_goal=row["weekly_goal"],
         gym_days=row["gym_days"],
-        lock_start_time=str(row["lock_start_time"]),
-        lock_end_time=str(row["lock_end_time"]),
+        lock_start_time=str(row["lock_start_time"])[:5],
+        lock_end_time=str(row["lock_end_time"])[:5],
     )
 
 
@@ -66,6 +66,6 @@ async def update_settings(
     return SettingsResponse(
         weekly_goal=row["weekly_goal"],
         gym_days=row["gym_days"],
-        lock_start_time=str(row["lock_start_time"]),
-        lock_end_time=str(row["lock_end_time"]),
+        lock_start_time=str(row["lock_start_time"])[:5],
+        lock_end_time=str(row["lock_end_time"])[:5],
     )

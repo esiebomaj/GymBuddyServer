@@ -93,7 +93,7 @@ async def update_settings(
             .select("id")
             .eq("user_id", uid)
             .eq("visit_date", today)
-            .maybe_single()
+            .limit(1)
             .execute()
         )
         if not visit.data:

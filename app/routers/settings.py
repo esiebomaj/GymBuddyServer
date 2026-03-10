@@ -76,13 +76,15 @@ async def update_settings(
 
     current = (
         db.table("user_settings")
-        .select("gym_days, lock_start_time, lock_end_time")
+        .select("gym_days, lock_start_time, lock_end_time, free_updates_remaining")
         .eq("user_id", uid)
         .maybe_single()
         .execute()
     )
 
-    if current.data and _in_lock_window(
+    free_updates = (current.data or {}).get("free_updates_remaining", 0)
+
+    if free_updates <= 0 and current.data and _in_lock_window(
         current.data["gym_days"],
         str(current.data["lock_start_time"])[:5],
         str(current.data["lock_end_time"])[:5],
@@ -102,9 +104,11 @@ async def update_settings(
                 detail="Cannot change schedule while apps are locked. Submit gym proof first.",
             )
 
+    decrement = {"free_updates_remaining": max(free_updates - 1, 0)} if free_updates > 0 else {}
+
     result = (
         db.table("user_settings")
-        .update({**updates, "updated_at": "now()"})
+        .update({**updates, **decrement, "updated_at": "now()"})
         .eq("user_id", uid)
         .execute()
     )

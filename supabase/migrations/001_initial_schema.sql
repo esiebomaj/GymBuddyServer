@@ -118,3 +118,6 @@ create policy "Users can upload proof photos"
 create policy "Anyone can read proof photos"
     on storage.objects for select
     using (bucket_id = 'proof-photos');
+
+
+ALTER TABLE public.user_settings ADD COLUMN free_updates_remaining int NOT NULL DEFAULT 2;

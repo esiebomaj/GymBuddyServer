@@ -8,24 +8,27 @@ from app.models.settings import SettingsResponse, SettingsUpdate
 router = APIRouter(tags=["settings"], prefix="/api/settings")
 
 
-def _gym_day_started_this_week(gym_days: list[int], lock_start_time: str) -> bool:
-    """True if any gym day's lock window has already started this Mon-Sun week.
+def _in_lock_window(gym_days: list[int], lock_start: str, lock_end: str) -> bool:
+    """True if right now is inside a lock window (gym day + within start/end time).
 
     ``gym_days`` uses the JS convention: 0=Sun, 1=Mon … 6=Sat.
     """
     now = datetime.now()
-    py_weekday = now.weekday()  # 0=Mon … 6=Sun
+    if now.weekday() == 6:
+        js_day = 0  # Sunday
+    else:
+        js_day = now.weekday() + 1
 
-    start_h, start_m = (int(p) for p in lock_start_time.split(":"))
+    if js_day not in gym_days:
+        return False
 
-    for gd in gym_days:
-        offset = (gd - 1) % 7  # convert to Mon-based: Mon=0 … Sun=6
-        if offset < py_weekday:
-            return True
-        if offset == py_weekday:
-            if now.hour > start_h or (now.hour == start_h and now.minute >= start_m):
-                return True
-    return False
+    start_h, start_m = (int(p) for p in lock_start.split(":"))
+    end_h, end_m = (int(p) for p in lock_end.split(":"))
+    current = now.hour * 60 + now.minute
+    start = start_h * 60 + start_m
+    end = end_h * 60 + end_m
+
+    return current >= start and current <= end
 
 
 @router.get("", response_model=SettingsResponse)
@@ -73,20 +76,31 @@ async def update_settings(
 
     current = (
         db.table("user_settings")
-        .select("gym_days, lock_start_time")
+        .select("gym_days, lock_start_time, lock_end_time")
         .eq("user_id", uid)
         .maybe_single()
         .execute()
     )
 
-    if current.data and _gym_day_started_this_week(
+    if current.data and _in_lock_window(
         current.data["gym_days"],
         str(current.data["lock_start_time"])[:5],
+        str(current.data["lock_end_time"])[:5],
     ):
-        raise HTTPException(
-            status_code=423,
-            detail="Schedule is locked for the current week. You can make changes next week.",
+        today = datetime.now().strftime("%Y-%m-%d")
+        visit = (
+            db.table("visits")
+            .select("id")
+            .eq("user_id", uid)
+            .eq("visit_date", today)
+            .maybe_single()
+            .execute()
         )
+        if not visit.data:
+            raise HTTPException(
+                status_code=423,
+                detail="Cannot change schedule while apps are locked. Submit gym proof first.",
+            )
 
     result = (
         db.table("user_settings")

@@ -89,7 +89,7 @@ async def update_settings(
     ):
         today = datetime.now().strftime("%Y-%m-%d")
         visit = (
-            db.table("visits")
+            db.table("gym_visits")
             .select("id")
             .eq("user_id", uid)
             .eq("visit_date", today)

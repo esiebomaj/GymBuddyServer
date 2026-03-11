@@ -143,6 +143,22 @@ def get_stats(db: Client, user_id: str) -> dict:
     visit_dates = [r["visit_date"] for r in (weekly_result.data or [])]
     visited_today = today.isoformat() in visit_dates
 
+    # User settings (needed for gym_days matching and weekly_goal)
+    settings_row = (
+        db.table("user_settings")
+        .select("weekly_goal, gym_days")
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+    ).data
+
+    gym_days = settings_row.get("gym_days", [])
+    scheduled_iso = {
+        (week_start + timedelta(days=d - 1)).isoformat()
+        for d in gym_days
+    }
+    matching_visit_dates = [d for d in visit_dates if d in scheduled_iso]
+
     # Total visits
     total_result = (
         db.table("gym_visits")
@@ -175,21 +191,14 @@ def get_stats(db: Client, user_id: str) -> dict:
                 "updated_at": "now()",
             }).eq("user_id", user_id).execute()
 
-    # Weekly goal (from settings)
-    settings_row = (
-        db.table("user_settings")
-        .select("weekly_goal")
-        .eq("user_id", user_id)
-        .single()
-        .execute()
-    ).data
-
     return {
         "weekly_visits": len(visit_dates),
+        "matching_weekly_visits": len(matching_visit_dates),
         "weekly_goal": settings_row["weekly_goal"],
         "current_streak": current_streak,
         "longest_streak": longest_streak,
         "total_visits": total_visits,
         "visited_today": visited_today,
         "visit_dates_this_week": visit_dates,
+        "matching_visit_dates_this_week": matching_visit_dates,
     }

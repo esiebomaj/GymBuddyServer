@@ -42,6 +42,7 @@ async def submit_visit(
         try:
             result = await validate_workout_image(image_bytes, photo.content_type, workout_type)
         except Exception:
+            logger.error("Could not validate photo as a workout image", exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Could not validate photo as a workout image",

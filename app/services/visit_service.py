@@ -13,9 +13,10 @@ ALLOWED_WORKOUT_TYPES = {
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic"}
 
 
-def _monday_of(d: date) -> date:
-    """Return the Monday of the ISO week containing *d*."""
-    return d - timedelta(days=d.weekday())
+def _sunday_of(d: date) -> date:
+    """Return the Sunday of the week containing *d* (week starts Sunday)."""
+    # Python weekday(): Mon=0 .. Sun=6; days since Sunday = (weekday() + 1) % 7
+    return d - timedelta(days=(d.weekday() + 1) % 7)
 
 
 async def upload_proof_photo(
@@ -82,7 +83,7 @@ def create_visit(
 def update_streak_if_needed(db: Client, user_id: str, weekly_goal: int) -> dict:
     """Check if the weekly goal was just met and bump the streak accordingly."""
     today = date.today()
-    week_start = _monday_of(today)
+    week_start = _sunday_of(today)
     week_end = week_start + timedelta(days=6)
 
     visits_this_week = (
@@ -127,7 +128,7 @@ def update_streak_if_needed(db: Client, user_id: str, weekly_goal: int) -> dict:
 def get_stats(db: Client, user_id: str) -> dict:
     """Build the combined stats payload for GET /api/stats."""
     today = date.today()
-    week_start = _monday_of(today)
+    week_start = _sunday_of(today)
     week_end = week_start + timedelta(days=6)
 
     # Weekly visits
@@ -152,9 +153,9 @@ def get_stats(db: Client, user_id: str) -> dict:
         .execute()
     ).data
 
-    gym_days = settings_row.get("gym_days", [])
+    gym_days = settings_row.get("gym_days", [])  # 0=Sun, 1=Mon … 6=Sat
     scheduled_iso = {
-        (week_start + timedelta(days=d - 1)).isoformat()
+        (week_start + timedelta(days=d)).isoformat()
         for d in gym_days
     }
     matching_visit_dates = [d for d in visit_dates if d in scheduled_iso]
@@ -181,10 +182,11 @@ def get_stats(db: Client, user_id: str) -> dict:
     longest_streak = streak_row["longest_streak"]
     last_completed = streak_row["last_completed_week"]
 
-    # Reset streak if the user missed the previous week entirely
+    # Reset streak if the user did not achieve their weekly target in any week
+    # since the last completed week (i.e. there is a gap of at least one full week).
     if last_completed:
-        last_monday = date.fromisoformat(last_completed)
-        if week_start - last_monday > timedelta(days=7) and len(visit_dates) == 0:
+        last_completed_week_start = date.fromisoformat(last_completed)
+        if week_start - last_completed_week_start > timedelta(days=7):
             current_streak = 0
             db.table("streaks").update({
                 "current_streak": 0,

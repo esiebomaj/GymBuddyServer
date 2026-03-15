@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import auth, health, settings, visits
+from app.routers import auth, health, settings, visits, waitlist
 
 
 @asynccontextmanager
@@ -27,3 +27,4 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(settings.router)
 app.include_router(visits.router)
+app.include_router(waitlist.router)

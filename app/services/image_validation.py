@@ -15,6 +15,8 @@ SYSTEM_PROMPT = (
     "This includes: being at a gym, using exercise equipment, doing bodyweight exercises, "
     "running outdoors, stretching, yoga, swimming, cycling, boxing, or any other recognizable "
     "form of physical exercise. A selfie at the gym or a photo of gym equipment also counts.\n\n"
+    "Consider whether the photo could be forged, e.g. a user taking a photo of a screen. "
+    "Forged photos should not be accepted.\n\n"
     "Also consider whether the photo is consistent with the claimed workout type. "
     "For example, a photo of a swimming pool would not match a claimed workout type of 'weights'."
 )
